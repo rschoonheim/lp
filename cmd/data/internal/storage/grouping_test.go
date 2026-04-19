@@ -11,8 +11,8 @@ import (
 func TestGrouping_Identifier(t *testing.T) {
 	uuid, _ := uuid.Parse("3b079575-b0ac-44e9-973e-90f735877f17")
 	grouping := storage.Grouping{
-		Id:   uuid,
-		Type: "test-case",
+		Context: uuid,
+		Type:    "test-case",
 	}
 
 	if fmt.Sprintf("%x", grouping.Identifier()) != "d785465a80ff8d3876929be63f3b688c0c7160167d0e558fe10fde6a6b918f7d" {
