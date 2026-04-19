@@ -1,0 +1,20 @@
+api_addr: ":8080"          # REST API address (empty disables API)
+runners:
+  # Seconds before we time out a job which is not finished.
+  # Default: 60
+  #
+  timeout: 60
+  # Number of jobs that can run concurrently.
+  # Default: 1
+  #
+  max_concurrent: 1
+pipelines:
+  directories:
+    - /concepts/sphere/lp/.example/pipelines
+listeners:
+  - type: file_watcher
+    name: code-watcher
+    pipeline: build
+    config:
+      path: /concepts/sphere/lp/.example/pipelines/src
+      pattern: "test"

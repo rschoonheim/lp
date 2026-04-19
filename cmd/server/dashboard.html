@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LP Dashboard</title>
+    <style>
+        :root {
+            --cds-background: #161616;
+            --cds-background-hover: #1e1e1e;
+            --cds-layer-01: #262626;
+            --cds-layer-02: #393939;
+            --cds-layer-hover: #333333;
+            --cds-border-subtle: #393939;
+            --cds-border-strong: #525252;
+            --cds-text-primary: #f4f4f4;
+            --cds-text-secondary: #c6c6c6;
+            --cds-text-placeholder: #6f6f6f;
+            --cds-text-helper: #8d8d8d;
+            --cds-link-primary: #78a9ff;
+            --cds-link-primary-hover: #a6c8ff;
+            --cds-support-success: #42be65;
+            --cds-support-error: #fa4d56;
+            --cds-support-warning: #f1c21b;
+            --cds-support-info: #4589ff;
+            --cds-tag-bg-blue: rgba(69,137,255,0.2);
+            --cds-tag-bg-green: rgba(66,190,101,0.2);
+            --cds-tag-bg-red: rgba(250,77,86,0.2);
+            --cds-tag-bg-gray: rgba(141,141,141,0.2);
+            --cds-tag-bg-cyan: rgba(51,177,204,0.2);
+            --cds-focus: #ffffff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--cds-background); color: var(--cds-text-primary);
+            font-size: 14px; line-height: 1.43; -webkit-font-smoothing: antialiased;
+        }
+        .shell-header {
+            background: var(--cds-layer-01); height: 48px; display: flex; align-items: center;
+            padding: 0 1rem; border-bottom: 1px solid var(--cds-border-subtle); position: sticky; top: 0; z-index: 100;
+        }
+        .shell-header__name { font-size: 14px; font-weight: 600; letter-spacing: 0.1px; }
+        .shell-header__name span { font-weight: 400; color: var(--cds-text-secondary); }
+        .shell-header__status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--cds-text-secondary); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cds-text-placeholder); }
+        .status-dot--ok { background: var(--cds-support-success); }
+        .status-dot--err { background: var(--cds-support-error); }
+        .content { max-width: 1584px; margin: 0 auto; padding: 2rem 1rem; }
+        .tile-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1px; margin-bottom: 2rem; }
+        .tile { background: var(--cds-layer-01); padding: 1rem; min-height: 100px; display: flex; flex-direction: column; justify-content: space-between; }
+        .tile__label { font-size: 12px; color: var(--cds-text-helper); letter-spacing: 0.32px; text-transform: uppercase; margin-bottom: 0.5rem; }
+        .tile__value { font-size: 28px; font-weight: 300; }
+        .tabs { display: flex; border-bottom: 1px solid var(--cds-border-subtle); margin-bottom: 1.5rem; }
+        .tab {
+            padding: 0.5rem 1rem; font-size: 14px; color: var(--cds-text-secondary); background: none; border: none;
+            border-bottom: 2px solid transparent; cursor: pointer; letter-spacing: 0.16px; transition: color 70ms, border-color 70ms;
+        }
+        .tab:hover { color: var(--cds-text-primary); background: var(--cds-background-hover); }
+        .tab--sel { color: var(--cds-text-primary); border-bottom-color: var(--cds-support-info); font-weight: 600; }
+        .panel { display: none; } .panel--on { display: block; animation: fi 150ms ease-out; }
+        @keyframes fi { from { opacity: 0; } to { opacity: 1; } }
+        .dtable { width: 100%; border-collapse: collapse; }
+        .dtable thead th {
+            font-size: 12px; font-weight: 600; color: var(--cds-text-secondary); letter-spacing: 0.16px; text-align: left;
+            padding: 0.75rem 1rem; background: var(--cds-layer-01); border-bottom: 1px solid var(--cds-border-subtle); text-transform: uppercase;
+        }
+        .dtable thead th.r { text-align: right; }
+        .dtable tbody td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--cds-border-subtle); font-size: 14px; color: var(--cds-text-secondary); }
+        .dtable tbody td.r { text-align: right; }
+        .dtable tbody tr:hover { background: var(--cds-layer-hover); }
+        .mono { font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+        .tag { display: inline-flex; align-items: center; height: 18px; padding: 0 8px; font-size: 12px; letter-spacing: 0.32px; border-radius: 100px; }
+        .tag--blue { background: var(--cds-tag-bg-blue); color: #a6c8ff; }
+        .tag--green { background: var(--cds-tag-bg-green); color: #6fdc8c; }
+        .tag--red { background: var(--cds-tag-bg-red); color: #ff8389; }
+        .tag--gray { background: var(--cds-tag-bg-gray); color: #c6c6c6; }
+        .tag--cyan { background: var(--cds-tag-bg-cyan); color: #3ddbd9; }
+        .pcard { background: var(--cds-layer-01); margin-bottom: 1px; padding: 1rem; }
+        .pcard__hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.75rem; }
+        .pcard__name { font-size: 14px; font-weight: 600; }
+        .pcard__id { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--cds-text-placeholder); margin-top: 2px; }
+        .srow { display: flex; align-items: center; gap: 0.5rem; padding: 4px 0; font-size: 13px; }
+        .srow__i { color: var(--cds-text-placeholder); font-size: 12px; min-width: 20px; text-align: right; }
+        .srow__n { color: var(--cds-text-secondary); }
+        .srow__c { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--cds-text-placeholder); margin-left: auto; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lbtn { background: none; border: none; cursor: pointer; color: var(--cds-link-primary); font-size: 13px; padding: 0.5rem 0; letter-spacing: 0.16px; }
+        .lbtn:hover { color: var(--cds-link-primary-hover); text-decoration: underline; }
+        .rcard { background: var(--cds-background); border-left: 3px solid var(--cds-border-subtle); padding: 0.75rem 1rem; margin-top: 0.5rem; font-size: 13px; }
+        .rcard--completed { border-left-color: var(--cds-support-success); }
+        .rcard--failed { border-left-color: var(--cds-support-error); }
+        .rcard--running { border-left-color: var(--cds-support-info); }
+        .rcard__hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+        .rcard__id { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--cds-text-placeholder); }
+        .rcard__meta { color: var(--cds-text-helper); font-size: 12px; margin-bottom: 4px; }
+        .rcard__err { color: var(--cds-support-error); font-size: 12px; margin-top: 6px; font-family: 'IBM Plex Mono', monospace; }
+        .rstep { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; }
+        .rstep .ok { color: var(--cds-support-success); } .rstep .fail { color: var(--cds-support-error); }
+        .rstep .run { color: var(--cds-support-info); } .rstep .pend { color: var(--cds-text-placeholder); }
+        .rstep__n { color: var(--cds-text-secondary); }
+        .rstep__e { color: var(--cds-support-error); font-family: 'IBM Plex Mono', monospace; margin-left: auto; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .runs-ct { margin-top: 0.75rem; } .runs-ct.hidden { display: none; }
+        .hrow { display: flex; align-items: baseline; gap: 12px; padding: 6px 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 12px; border-bottom: 1px solid var(--cds-border-subtle); }
+        .hrow:hover { background: var(--cds-layer-hover); }
+        .hrow__t { color: var(--cds-text-placeholder); white-space: nowrap; min-width: 70px; }
+        .hrow__l { min-width: 48px; } .hrow__c { color: var(--cds-text-placeholder); min-width: 64px; }
+        .hrow__m { color: var(--cds-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .l--INFO { color: var(--cds-support-info); } .l--WARN { color: var(--cds-support-warning); } .l--ERROR { color: var(--cds-support-error); } .l--DEBUG { color: var(--cds-text-placeholder); }
+        .toolbar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+        .sel {
+            background: var(--cds-layer-01); border: none; border-bottom: 1px solid var(--cds-border-strong);
+            color: var(--cds-text-primary); font-size: 14px; padding: 8px 12px; appearance: none; cursor: pointer; min-width: 140px;
+        }
+        .sel:hover { background: var(--cds-layer-hover); }
+        .sel:focus { outline: 2px solid var(--cds-focus); outline-offset: -2px; }
+        .gbtn { background: none; border: none; cursor: pointer; color: var(--cds-link-primary); font-size: 14px; padding: 8px 16px; margin-left: auto; }
+        .gbtn:hover { background: var(--cds-background-hover); color: var(--cds-link-primary-hover); }
+        .empty { color: var(--cds-text-placeholder); font-size: 14px; padding: 1rem; }
+        #toast-container { position: fixed; top: 56px; right: 16px; z-index: 200; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+        .toast {
+            background: var(--cds-layer-01); border-left: 3px solid var(--cds-border-subtle); color: var(--cds-text-primary);
+            padding: 10px 16px; font-size: 13px; min-width: 260px; max-width: 400px; border-radius: 0;
+            transition: opacity 300ms, transform 300ms; pointer-events: auto;
+            animation: slideIn 200ms ease-out;
+        }
+        .toast--ok { border-left-color: var(--cds-support-success); }
+        .toast--err { border-left-color: var(--cds-support-error); }
+        .toast--run { border-left-color: var(--cds-support-info); }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<header class="shell-header">
+    <span class="shell-header__name">LP <span>— Local Pipeline</span></span>
+    <div class="shell-header__status"><div class="status-dot" id="status-dot"></div><span id="status-text">Connecting…</span></div>
+</header>
+<div class="content">
+    <div class="tile-row">
+        <div class="tile"><span class="tile__label">Timeout</span><span class="tile__value" id="cfg-timeout">—</span></div>
+        <div class="tile"><span class="tile__label">Max Concurrent</span><span class="tile__value" id="cfg-concurrent">—</span></div>
+        <div class="tile"><span class="tile__label">Pipelines</span><span class="tile__value" id="cfg-pipelines">—</span></div>
+        <div class="tile"><span class="tile__label">Listeners</span><span class="tile__value" id="cfg-listeners">—</span></div>
+    </div>
+    <div class="tabs" role="tablist">
+        <button class="tab tab--sel" id="tab-pipelines" onclick="switchTab('pipelines')" role="tab">Pipelines</button>
+        <button class="tab" id="tab-listeners" onclick="switchTab('listeners')" role="tab">Listeners</button>
+        <button class="tab" id="tab-feed" onclick="switchTab('feed')" role="tab">Live Feed</button>
+        <button class="tab" id="tab-history" onclick="switchTab('history')" role="tab">History</button>
+        <button class="tab" id="tab-stats" onclick="switchTab('stats')" role="tab">Stats</button>
+    </div>
+    <div id="panel-pipelines" class="panel panel--on"><div id="pipelines-list"><p class="empty">Loading pipelines…</p></div></div>
+    <div id="panel-listeners" class="panel"><div id="listeners-list"><p class="empty">Loading listeners…</p></div></div>
+    <div id="panel-feed" class="panel">
+        <div class="toolbar"><span style="color:var(--cds-text-helper);font-size:12px">Real-time events — newest first</span></div>
+        <div id="feed-list"><p class="empty">No events yet — waiting for activity…</p></div>
+    </div>
+    <div id="panel-history" class="panel">
+        <div class="toolbar">
+            <select id="filter-category" onchange="loadHistory()" class="sel">
+                <option value="">All categories</option><option value="pipeline">pipeline</option><option value="step">step</option>
+                <option value="hook">hook</option><option value="config">config</option><option value="server">server</option>
+            </select>
+            <select id="filter-level" onchange="loadHistory()" class="sel">
+                <option value="">All levels</option><option value="INFO">INFO</option><option value="WARN">WARN</option><option value="ERROR">ERROR</option>
+            </select>
+            <button onclick="loadHistory()" class="gbtn">Refresh</button>
+        </div>
+        <div id="history-list"><p class="empty">Loading history…</p></div>
+    </div>
+    <div id="panel-stats" class="panel"><div id="stats-list"><p class="empty">Loading stats…</p></div></div>
+</div>
+<div id="toast-container"></div>
+<script>
+const API='';
+let ws=null, wsRetry=0;
+
+// ── WebSocket ──────────────────────────────────────────────────────
+function connectWS(){
+    const proto=location.protocol==='https:'?'wss:':'ws:';
+    ws=new WebSocket(proto+'//'+location.host+'/ws');
+    ws.onopen=()=>{wsRetry=0;setConn(true);addToast('Connected','ok')};
+    ws.onclose=()=>{setConn(false);const d=Math.min(2000*(2**wsRetry),30000);wsRetry++;setTimeout(connectWS,d)};
+    ws.onerror=()=>ws.close();
+    ws.onmessage=e=>{try{handleEvent(JSON.parse(e.data))}catch{}};
+}
+
+function setConn(ok){
+    document.getElementById('status-dot').className='status-dot '+(ok?'status-dot--ok':'status-dot--err');
+    document.getElementById('status-text').textContent=ok?'Connected':'Reconnecting…';
+}
+
+function handleEvent(evt){
+    // Push to live feed
+    addFeedEntry(evt);
+    // Update active panel
+    const active=document.querySelector('.panel--on');
+    if(active){
+        if(active.id==='panel-pipelines') updatePipelineCard(evt);
+        if(active.id==='panel-stats') loadStatus();
+    }
+    // Always keep status tiles fresh on pipeline events
+    if(evt.type.startsWith('pipeline_')) loadStatus();
+    // Show toast notifications
+    showToast(evt);
+}
+
+// ── Live Feed (new panel) ──────────────────────────────────────────
+const feedMax=100;
+let feedEntries=[];
+
+function addFeedEntry(evt){
+    feedEntries.unshift(evt);
+    if(feedEntries.length>feedMax) feedEntries.pop();
+    if(document.querySelector('#panel-feed.panel--on')) renderFeed();
+}
+
+function renderFeed(){
+    const el=document.getElementById('feed-list');
+    if(!el)return;
+    if(!feedEntries.length){el.innerHTML='<p class="empty">No events yet — waiting for activity…</p>';return}
+    el.innerHTML=feedEntries.map(e=>{
+        const t=new Date(e.time).toLocaleTimeString();
+        const cls=e.type.includes('failed')?'l--ERROR':e.type.includes('completed')?'l--INFO':'l--WARN';
+        const label=e.pipeline?(e.step?e.pipeline+'/'+e.step:e.pipeline):'system';
+        const detail=e.error||e.stdout||'';
+        return `<div class="hrow"><span class="hrow__t">${t}</span><span class="hrow__l ${cls}">${esc(e.type)}</span><span class="hrow__c">${esc(label)}</span><span class="hrow__m">${esc(detail)}</span></div>`;
+    }).join('');
+}
+
+// ── Toasts ─────────────────────────────────────────────────────────
+function showToast(evt){
+    if(evt.type==='pipeline_completed') addToast(`Pipeline ${evt.pipeline} completed`,'ok');
+    else if(evt.type==='pipeline_failed') addToast(`Pipeline ${evt.pipeline} failed`,'err');
+    else if(evt.type==='pipeline_started') addToast(`Pipeline ${evt.pipeline} started`,'run');
+    else if(evt.type==='pipelines_reloaded') addToast(`Pipelines reloaded (${evt.steps})`,'ok');
+}
+
+function addToast(msg,type){
+    const c=document.getElementById('toast-container');
+    const d=document.createElement('div');
+    d.className='toast toast--'+type;
+    d.textContent=msg;
+    c.appendChild(d);
+    setTimeout(()=>{d.style.opacity='0';d.style.transform='translateX(100%)';setTimeout(()=>d.remove(),300)},4000);
+}
+
+// ── Live pipeline card updates ─────────────────────────────────────
+function updatePipelineCard(evt){
+    if(!evt.pipeline)return;
+    // If runs panel is open for this pipeline, refresh it
+    const runsEl=document.getElementById('runs-'+evt.pipeline);
+    if(runsEl&&!runsEl.classList.contains('hidden')){
+        toggleRuns(evt.pipeline);// close
+        toggleRuns(evt.pipeline);// reopen with fresh data
+    }
+}
+
+// ── Tab switching (added feed tab) ─────────────────────────────────
+function switchTab(n){
+    ['pipelines','listeners','history','stats','feed'].forEach(t=>{
+        const p=document.getElementById('panel-'+t);
+        const b=document.getElementById('tab-'+t);
+        if(p)p.classList.toggle('panel--on',t===n);
+        if(b)b.classList.toggle('tab--sel',t===n);
+    });
+    if(n==='history')loadHistory();
+    if(n==='stats')loadStatus();
+    if(n==='pipelines')loadPipelines();
+    if(n==='listeners')loadListeners();
+    if(n==='feed')renderFeed();
+}
+
+// ── Status ─────────────────────────────────────────────────────────
+async function loadStatus(){
+    try{
+        const r=await fetch(API+'/api/status'),d=await r.json();
+        document.getElementById('cfg-timeout').textContent=d.config.timeout+'s';
+        document.getElementById('cfg-concurrent').textContent=d.config.max_concurrent;
+        document.getElementById('cfg-pipelines').textContent=(d.pipelines||[]).length;
+        renderStats(d.stats||[]);
+        // Fetch listeners count
+        try{const lr=await fetch(API+'/api/listeners'),ls=await lr.json();document.getElementById('cfg-listeners').textContent=ls.length}catch{}
+    }catch{}
+}
+
+function renderStats(stats){
+    const el=document.getElementById('stats-list');
+    if(!stats.length){el.innerHTML='<p class="empty">No stats available</p>';return}
+    el.innerHTML=`<table class="dtable"><thead><tr><th>Component</th><th>Hook</th><th class="r">Listeners</th><th class="r">Emits</th><th class="r">Panics</th></tr></thead><tbody>${stats.map(s=>`<tr><td>${esc(s.component)}</td><td class="mono">${esc(s.hook)}</td><td class="r">${s.listeners}</td><td class="r">${s.emit_count}</td><td class="r" style="${s.panics_caught>0?'color:var(--cds-support-error);font-weight:600':''}">${s.panics_caught}</td></tr>`).join('')}</tbody></table>`;
+}
+
+// ── Pipelines ──────────────────────────────────────────────────────
+async function loadPipelines(){
+    try{
+        const r=await fetch(API+'/api/pipelines'),ps=await r.json(),el=document.getElementById('pipelines-list');
+        if(!ps.length){el.innerHTML='<p class="empty">No pipelines loaded</p>';return}
+        el.innerHTML=ps.map(p=>`<div class="pcard" id="pcard-${esc(p.name)}"><div class="pcard__hdr"><div><div class="pcard__name">${esc(p.name)}</div><div class="pcard__id">${esc(p.id)}</div></div><span class="tag tag--blue">${p.steps.length} step${p.steps.length!==1?'s':''}</span></div><div>${p.steps.map((s,i)=>`<div class="srow"><span class="srow__i">${i+1}.</span><span class="srow__n">${esc(s.name)}</span><span class="srow__c">${esc(s.command)}</span></div>`).join('')}</div><button class="lbtn" onclick="toggleRuns('${esc(p.name)}')">View runs →</button><div id="runs-${esc(p.name)}" class="runs-ct hidden"></div></div>`).join('');
+    }catch{
+        document.getElementById('pipelines-list').innerHTML='<p class="empty" style="color:var(--cds-support-error)">Failed to load pipelines</p>';
+    }
+}
+
+// ── Listeners ──────────────────────────────────────────────────────
+async function loadListeners(){
+    try{
+        const r=await fetch(API+'/api/listeners'),ls=await r.json(),el=document.getElementById('listeners-list');
+        if(!ls.length){el.innerHTML='<p class="empty">No listeners configured</p>';return}
+        el.innerHTML=ls.map(l=>{
+            const cfgEntries=l.config?Object.entries(l.config):[];
+            return `<div class="pcard">
+                <div class="pcard__hdr">
+                    <div>
+                        <div class="pcard__name">${esc(l.name)}</div>
+                        <div class="pcard__id">→ ${esc(l.pipeline)}</div>
+                    </div>
+                    <span class="tag tag--cyan">${esc(l.type)}</span>
+                </div>
+                ${cfgEntries.length?`<div style="margin-top:4px">${cfgEntries.map(([k,v])=>`<div class="srow"><span class="srow__n">${esc(k)}</span><span class="srow__c">${esc(String(v))}</span></div>`).join('')}</div>`:''}
+            </div>`;
+        }).join('');
+    }catch{
+        document.getElementById('listeners-list').innerHTML='<p class="empty" style="color:var(--cds-support-error)">Failed to load listeners</p>';
+    }
+}
+
+// ── Runs ───────────────────────────────────────────────────────────
+async function toggleRuns(name){
+    const el=document.getElementById('runs-'+name);
+    if(!el)return;
+    if(!el.classList.contains('hidden')){el.classList.add('hidden');return}
+    el.classList.remove('hidden');
+    el.innerHTML='<p class="empty">Loading runs…</p>';
+    try{
+        const r=await fetch(API+'/api/pipelines/'+encodeURIComponent(name)+'/runs'),d=await r.json(),runs=d.runs||[];
+        if(!runs.length){el.innerHTML='<p class="empty">No runs yet</p>';return}
+        el.innerHTML=runs.map(r=>`<div class="rcard rcard--${r.status}"><div class="rcard__hdr"><span class="rcard__id">${esc(r.id.substring(0,8))}</span>${tagS(r.status)}</div>${r.started_at?`<div class="rcard__meta">Started ${new Date(r.started_at).toLocaleTimeString()}</div>`:''}${r.duration?`<div class="rcard__meta">Duration ${esc(r.duration)}</div>`:''}${r.error?`<div class="rcard__err">${esc(r.error)}</div>`:''}${r.steps&&r.steps.length?`<div style="margin-top:8px">${r.steps.map(s=>`<div class="rstep"><span class="${sic(s.status)}">${si(s.status)}</span><span class="rstep__n">${esc(s.name||'—')}</span>${s.error?`<span class="rstep__e">${esc(s.error)}</span>`:''}</div>`).join('')}</div>`:''}</div>`).join('');
+    }catch{
+        el.innerHTML='<p class="empty" style="color:var(--cds-support-error)">Failed to load runs</p>';
+    }
+}
+
+// ── History ────────────────────────────────────────────────────────
+async function loadHistory(){
+    const cat=document.getElementById('filter-category').value,lvl=document.getElementById('filter-level').value;
+    let url=API+'/api/history?';
+    if(cat)url+='category='+encodeURIComponent(cat)+'&';
+    if(lvl)url+='level='+encodeURIComponent(lvl);
+    try{
+        const r=await fetch(url),d=await r.json(),entries=d.entries||[],el=document.getElementById('history-list');
+        if(!entries.length){el.innerHTML='<p class="empty">No entries</p>';return}
+        el.innerHTML=entries.slice(-300).reverse().map(e=>`<div class="hrow"><span class="hrow__t">${new Date(e.time).toLocaleTimeString()}</span><span class="hrow__l l--${e.level}">${esc(e.level)}</span><span class="hrow__c">${esc(e.category)}</span><span class="hrow__m">${esc(e.message)}</span></div>`).join('');
+    }catch{
+        document.getElementById('history-list').innerHTML='<p class="empty" style="color:var(--cds-support-error)">Failed to load history</p>';
+    }
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function tagS(st){const m={completed:'tag--green',running:'tag--blue',failed:'tag--red',pending:'tag--gray'};return`<span class="tag ${m[st]||'tag--gray'}">${esc(st)}</span>`}
+function si(st){return st==='completed'?'✓':st==='failed'?'✗':st==='running'?'●':'○'}
+function sic(st){return st==='completed'?'ok':st==='failed'?'fail':st==='running'?'run':'pend'}
+
+// ── Init ───────────────────────────────────────────────────────────
+loadStatus();
+loadPipelines();
+connectWS();
+// Fallback polling for status tiles only (every 15s instead of 5s, WS handles the rest)
+setInterval(loadStatus,15000);
+</script>
+</body>
+</html>

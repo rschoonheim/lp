@@ -1,0 +1,6 @@
+name: Example Pipeline
+steps:
+  - name: Action 1
+    command: echo "Hello, World!"
+  - name: Action 2
+    command: echo "This is a second action."
