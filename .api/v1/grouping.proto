@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package lp.data.v1.grouping;
+
+option go_package = "cmd/data/v1/grouping;grouping_v1";
+
+// Grouping - A data grouping container representing a typed set of items.
+message Grouping {
+  // Unique identifier for this grouping (UUID v4).
+  string id = 1;
+
+  // Type classification for this grouping.
+  string type = 2;
+}
+
+service GroupingService {}
