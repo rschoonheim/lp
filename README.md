@@ -6,7 +6,6 @@ Local Pipeline (LP) is a lightweight automation server that watches for local tr
 them to YAML-defined pipelines, and executes pipeline steps as OS commands. Pipeline results are printed directly to the
 CLI in real time.
 
-
 ## Quick Start
 
 ```bash
@@ -98,12 +97,40 @@ Listeners monitor triggers and produce events. Each listener is bound to a pipel
 
 **Built-in listener types:**
 
-| Type           | Description                                           | Config keys                   |
-|----------------|-------------------------------------------------------|-------------------------------|
-| `file_watcher` | Polls a directory for new or modified files           | `path`, `pattern`, `interval` |
-| `webhook`      | HTTP server that fires events on `POST /{event_name}` | `addr`, `events`              |
+| Type           | Description                                                         | Config keys                   |
+|----------------|---------------------------------------------------------------------|-------------------------------|
+| `file_watcher` | Polls a directory for new or modified files                         | `path`, `pattern`, `interval` |
+| `webhook`      | HTTP server that fires events on `POST /{event_name}`               | `addr`, `events`              |
+| `git_hook`     | Installs shims into `.git/hooks` to trigger pipelines on Git events | `repo`, `hooks`               |
 
 Custom listener types can be registered via `RegisterListenerFactory`.
+
+#### Git Hook Listener
+
+The `git_hook` listener integrates with Git's native hook system. On start, it installs lightweight shim scripts into
+the repository's `.git/hooks/` directory. When Git fires a hook (e.g. during commit or push), the shim calls a local
+HTTP server managed by the listener, which emits an LP event to trigger the configured pipeline.
+
+```yaml
+listeners:
+  - type: git_hook
+    name: commit-hooks
+    pipeline: lint
+    config:
+      repo: /path/to/repo
+      hooks:
+        - pre-commit
+        - post-commit
+        - pre-push
+```
+
+| Config key | Required | Description                                 |
+|------------|----------|---------------------------------------------|
+| `repo`     | yes      | Absolute path to the Git repository root    |
+| `hooks`    | yes      | List of Git hook names to install shims for |
+
+**Backup behaviour:** If an existing hook script is found, it is renamed to `<hook>.lp-backup` before the shim is
+installed. The original hook is called after the shim completes. On `Stop`, shims are removed and backups are restored.
 
 ### Server
 
@@ -130,14 +157,14 @@ All server output uses a uniform timestamped format:
 
 Prefixes indicate the message type:
 
-| Prefix | Meaning |
-|--------|---------|
-| `INFO`  | Informational (startup, config, events) |
-| ` OK `  | Success (step/pipeline completed) |
-| `FAIL`  | Failure (step/pipeline failed, panics) |
-| `EVNT`  | Event fired (listener or pipeline emit) |
-| ` RUN`  | Execution started (pipeline/step) |
-| ` OUT`  | Captured command output (stdout/stderr) |
+| Prefix | Meaning                                 |
+|--------|-----------------------------------------|
+| `INFO` | Informational (startup, config, events) |
+| ` OK ` | Success (step/pipeline completed)       |
+| `FAIL` | Failure (step/pipeline failed, panics)  |
+| `EVNT` | Event fired (listener or pipeline emit) |
+| ` RUN` | Execution started (pipeline/step)       |
+| ` OUT` | Captured command output (stdout/stderr) |
 
 Example output:
 
@@ -166,12 +193,12 @@ Failed steps:
 
 When `api_addr` is set in the configuration, LP starts an HTTP server exposing the current state and execution history.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/status` | GET | Current server context: config, loaded pipelines, hook stats |
-| `/api/history` | GET | Ledger entries (all events/logs). Filter with `?category=pipeline&level=error` |
-| `/api/pipelines` | GET | All registered pipelines with their steps |
-| `/api/pipelines/{name}/runs` | GET | Execution history (runs) for a specific pipeline |
+| Endpoint                     | Method | Description                                                                    |
+|------------------------------|--------|--------------------------------------------------------------------------------|
+| `/api/status`                | GET    | Current server context: config, loaded pipelines, hook stats                   |
+| `/api/history`               | GET    | Ledger entries (all events/logs). Filter with `?category=pipeline&level=error` |
+| `/api/pipelines`             | GET    | All registered pipelines with their steps                                      |
+| `/api/pipelines/{name}/runs` | GET    | Execution history (runs) for a specific pipeline                               |
 
 Example:
 
@@ -218,6 +245,7 @@ Hooks configured in YAML run as external commands with environment variables (`L
 
 ```
 cmd/server/              # Server entrypoint and YAML configuration wiring
+internal/git-hooks/      # Git hook integration listener
 internal/hooks/          # Generic, reusable event hook registry (Go generics)
 internal/listener/       # Trigger monitoring and event production
 internal/logging/        # Categorized user-feedback log collection
