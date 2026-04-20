@@ -130,7 +130,27 @@ func ReadGroupingsFromFile(path string) (*Groupings, error) {
 	}
 	defer f.Close()
 
-	// Read the version byte to determine header size.
+	headers, err := readGroupingsHeaders(f)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := readGroupingsData(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return GroupingsNew(headers, data), nil
+}
+
+// ------------------------------------------------------------------
+//
+// # Helper functions
+//
+// ------------------------------------------------------------------
+
+// readGroupingsHeaders - reads and validates headers from a file.
+func readGroupingsHeaders(f *os.File) ([]byte, error) {
 	var version [1]byte
 	if _, err := f.ReadAt(version[:], GroupingsVersionHeaderOffset); err != nil {
 		return nil, fmt.Errorf("read groupings version: %w", err)
@@ -144,13 +164,16 @@ func ReadGroupingsFromFile(path string) (*Groupings, error) {
 		return nil, fmt.Errorf("unsupported groupings version: got %d", version[0])
 	}
 
-	// Read headers.
 	headers := make([]byte, headerSize)
 	if _, err := io.ReadFull(f, headers); err != nil {
 		return nil, fmt.Errorf("read groupings headers: %w", err)
 	}
 
-	// Read data entries (4-byte length prefix + content).
+	return headers, nil
+}
+
+// readGroupingsData - reads length-prefixed data entries from a file.
+func readGroupingsData(f *os.File) ([][]byte, error) {
 	var data [][]byte
 	for {
 		var length uint32
@@ -168,5 +191,5 @@ func ReadGroupingsFromFile(path string) (*Groupings, error) {
 		data = append(data, entry)
 	}
 
-	return GroupingsNew(headers, data), nil
+	return data, nil
 }
