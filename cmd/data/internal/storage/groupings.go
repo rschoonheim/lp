@@ -1,6 +1,11 @@
 package storage
 
-import "fmt"
+import (
+	"encoding/binary"
+	"fmt"
+	"io"
+	"os"
+)
 
 const (
 	GroupingsVersion1HeadersSize = 32
@@ -32,6 +37,16 @@ func (g *Groupings) Version() byte {
 	return g.Headers[GroupingsVersionHeaderOffset]
 }
 
+// VersionSupported - checks if the version of the groupings is supported.
+func (g *Groupings) VersionSupported() bool {
+	switch g.Version() {
+	default:
+		return false
+	case GroupingsVersion1:
+		return true
+	}
+}
+
 // VerifyHeaders - verifies the validity of the headers.
 func (g *Groupings) VerifyHeaders() error {
 
@@ -52,7 +67,7 @@ func (g *Groupings) VerifyHeaders() error {
 
 	// Next, ensure that the version of the groupings is supported.
 	//
-	if g.Version() != GroupingsVersion1 {
+	if !g.VersionSupported() {
 		return fmt.Errorf(
 			"unsupported groupings version: got %d",
 			g.Version(),
@@ -74,4 +89,84 @@ func (g *Groupings) VerifyHeaders() error {
 	}
 
 	return nil
+}
+
+// WriteToFile - writes the groupings to a file.
+func (g *Groupings) WriteToFile(path string) error {
+	if err := g.VerifyHeaders(); err != nil {
+		return fmt.Errorf("write groupings to %s: %w", path, err)
+	}
+
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("write groupings to %s: %w", path, err)
+	}
+	defer f.Close()
+
+	// Write headers (padded to fixed size based on version).
+	if _, err := f.Write(g.Headers); err != nil {
+		return fmt.Errorf("write groupings headers: %w", err)
+	}
+
+	// Write each data entry prefixed with its 4-byte length.
+	for i, d := range g.Data {
+		length := uint32(len(d))
+		if err := binary.Write(f, binary.BigEndian, length); err != nil {
+			return fmt.Errorf("write groupings data[%d] length: %w", i, err)
+		}
+		if _, err := f.Write(d); err != nil {
+			return fmt.Errorf("write groupings data[%d]: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+// ReadGroupingsFromFile - reads groupings from a file.
+func ReadGroupingsFromFile(path string) (*Groupings, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("read groupings from %s: %w", path, err)
+	}
+	defer f.Close()
+
+	// Read the version byte to determine header size.
+	var version [1]byte
+	if _, err := f.ReadAt(version[:], GroupingsVersionHeaderOffset); err != nil {
+		return nil, fmt.Errorf("read groupings version: %w", err)
+	}
+
+	var headerSize int
+	switch version[0] {
+	case GroupingsVersion1:
+		headerSize = GroupingsVersion1HeadersSize
+	default:
+		return nil, fmt.Errorf("unsupported groupings version: got %d", version[0])
+	}
+
+	// Read headers.
+	headers := make([]byte, headerSize)
+	if _, err := io.ReadFull(f, headers); err != nil {
+		return nil, fmt.Errorf("read groupings headers: %w", err)
+	}
+
+	// Read data entries (4-byte length prefix + content).
+	var data [][]byte
+	for {
+		var length uint32
+		if err := binary.Read(f, binary.BigEndian, &length); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, fmt.Errorf("read groupings data length: %w", err)
+		}
+
+		entry := make([]byte, length)
+		if _, err := io.ReadFull(f, entry); err != nil {
+			return nil, fmt.Errorf("read groupings data: %w", err)
+		}
+		data = append(data, entry)
+	}
+
+	return GroupingsNew(headers, data), nil
 }
