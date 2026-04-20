@@ -10,11 +10,11 @@ runners:
   max_concurrent: 1
 pipelines:
   directories:
-    - /concepts/sphere/lp/.example/pipelines
+    - /home/schoo077/lp/.example/pipelines
 listeners:
   - type: file_watcher
     name: code-watcher
     pipeline: build
     config:
-      path: /concepts/sphere/lp/.example/pipelines/src
+      path: /home/schoo077/lp/.example/pipelines/src
       pattern: "test"

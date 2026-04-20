@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	githooks "lp/internal/git-hooks"
 	"lp/internal/listener"
 	"time"
 )
@@ -13,6 +14,7 @@ type ListenerFactory func(entry ListenerEntry) (listener.Listener, error)
 var listenerFactories = map[string]ListenerFactory{
 	"file_watcher": newFileWatcherFromConfig,
 	"webhook":      newWebhookFromConfig,
+	"git_hook":     newGitHookFromConfig,
 }
 
 // RegisterListenerFactory - Registers a factory for a listener type.
@@ -94,3 +96,25 @@ func newWebhookFromConfig(entry ListenerEntry) (listener.Listener, error) {
 
 	return listener.NewWebhook(entry.Name, entry.Pipeline, addr, events)
 }
+
+// newGitHookFromConfig - Creates a GitHook listener from a ListenerEntry's config map.
+func newGitHookFromConfig(entry ListenerEntry) (listener.Listener, error) {
+	repo, _ := entry.Config["repo"].(string)
+
+	var hooks []string
+	if v, ok := entry.Config["hooks"]; ok {
+		switch hv := v.(type) {
+		case []any:
+			for _, item := range hv {
+				if s, ok := item.(string); ok {
+					hooks = append(hooks, s)
+				}
+			}
+		case []string:
+			hooks = hv
+		}
+	}
+
+	return githooks.New(entry.Name, entry.Pipeline, repo, hooks)
+}
+
